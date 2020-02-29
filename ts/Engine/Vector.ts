@@ -44,6 +44,9 @@ class Vector {
             f(this.y)
         )
     }
+    setLength(length: number) {
+        return Vector.fromAngle(this.toAngle(), length);
+    }
     length() {
         return Math.sqrt(this.dot(this));
     }
@@ -73,6 +76,9 @@ class Vector {
         this.x = x;
         this.y = y;
         return this;
+    }
+    normal() {
+        return new Vector(this.y, -this.x);
     }
     floor() {
         return new Vector(Math.floor(this.x), Math.floor(this.y));
