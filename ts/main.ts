@@ -2,11 +2,12 @@ const canvas = <HTMLCanvasElement>document.createElement('canvas');
 const ctx = <CanvasRenderingContext2D>canvas.getContext('2d');
 const cw: number = 1000;
 const ch: number = 1000;
-const game = new Game([], { showNormal: true, gravity: 0.1 });
-const square = new Square(new Vector(300, 450), 400, 50, new Vector(5, 0));
+const game = new Game([], { showNormal: true, gravity: 0.05, touchDistance: 0.01 });
+const square = new Square(new Vector(240, 833), 400, 50, new Vector(-2.15, -4.15));
 const other: GameElement[] = [
     new Square(new Vector(100, 900), 800, 100, new Vector(0, 0), 1, 1, false),
-    new Square(new Vector(900, 0), 100, 1000, new Vector(0, 0), 0, 0, false)
+    new Square(new Vector(900, 0), 100, 1000, new Vector(0, 0), 0, 0, false),
+    new Square(new Vector(0, 0), 100, 1000, new Vector(0, 0), 0, 0, false)
 ];
 canvas.height = ch;
 canvas.width = cw;

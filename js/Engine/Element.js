@@ -19,10 +19,16 @@ class GameElement {
         ctx.lineTo(...this.hitbox[0].toArray());
         ctx.stroke();
         ctx.closePath();
+        for (let i of this.hitbox) {
+            ctx.beginPath();
+            ctx.moveTo(...i.toArray());
+            ctx.lineTo(...i.add(this.velocity.setLength(100)).toArray());
+            ctx.stroke();
+            ctx.closePath();
+        }
         for (let i of this.drawCalls) {
             i.func(...i.args);
         }
-        this.drawCalls.splice(0, this.drawCalls.length);
     }
     move(collideElements, config) {
         const lengths = [];
@@ -31,6 +37,12 @@ class GameElement {
         const points = [];
         const segsN = [];
         const thisSegsN = [];
+        const N = [];
+        const thisN = [];
+        // used to see velocity length in debugger
+        const tempthisvelocitylength = this.velocity.length();
+        // reset draw calls
+        this.drawCalls.splice(0, this.drawCalls.length);
         //store every segment and every points of every element in the game in segs and points respectively
         for (let i of collideElements) {
             let k = 1;
@@ -51,14 +63,16 @@ class GameElement {
         for (let i of segs) {
             let v = i[1].substract(i[0]);
             let middlePoint = i[0].add(v.divide(2));
-            let n = v.normal().setLength(10);
-            segsN.push([middlePoint, middlePoint.add(n)]);
+            let n = v.normal().unit();
+            N.push(n);
+            segsN.push([middlePoint, middlePoint.add(n.setLength(config.normalLength))]);
         }
         for (let i of thisSegs) {
             let v = i[1].substract(i[0]);
             let middlePoint = i[0].add(v.divide(2));
-            let n = v.normal().setLength(10);
-            thisSegsN.push([middlePoint, middlePoint.add(n)]);
+            let n = v.normal().unit();
+            thisN.push(n);
+            thisSegsN.push([middlePoint, middlePoint.add(n.setLength(config.normalLength))]);
         }
         // draw normals if necsarry
         if (config.showNormal) {
@@ -83,41 +97,74 @@ class GameElement {
                 const l = vectorLineIntersection(i, this.velocity, j[0], j[1]);
                 if (l.hit) {
                     // push the colliding distance in the lengths arrays
-                    lengths.push([l.distance, j]);
+                    let v = j[1].substract(j[0]);
+                    let middlePoint = j[0].add(v.divide(2));
+                    let n = v.normal().unit();
+                    lengths.push([l.distance, j, [i, i.add(this.velocity.setLength(l.distance))], n]);
                 }
             }
         }
-        // check if any other point will collide with the object when it move. its used to detect the collision between a small moving element and a large obstacle
-        for (let i of points) {
+        // check if any other point will collide with the object when it move. its used to detect the collision between a large moving element and a small obstacle
+        /**
+         * TODO fucing solve the probleme whereit check with evey points and not just them oving object
+         */
+        /*for (let i of points) {
             for (let j of thisSegs) {
                 // cast a ray to know if the vector of the other element's point and its negatively moved version will collide with the moving element
-                const l = vectorLineIntersection(i, i.add(this.velocity.negative()), j[0], j[1]);
+                const l = vectorLineIntersection(i, this.velocity.negative(), j[0], j[1])
                 if (l.hit) {
                     // push the colliding distance in the lengths arrays
-                    lengths.push([l.distance, j]);
+                    let v = j[1].substract(j[0]);
+                    let middlePoint = j[0].add(v.divide(2));
+                    let n = v.normal().unit();
+                    lengths.push([<number>l.distance, j, [i, i.add(this.velocity.setLength(<number>l.distance))], n])
                 }
             }
-        }
+        }*/
         let min = Infinity;
         let minSeg = [new Vector(0, 0), new Vector(0, 0)];
+        let minM = [new Vector(0, 0), new Vector(0, 0)];
         let base = false;
+        let n = new Vector(0, 0);
         // find the smaller collisions distance the know by how much the moving element can move
         for (let i of lengths) {
             if (i[0] < min) {
                 min = i[0];
                 minSeg = i[1];
+                minM = i[2];
+                n = i[3];
             }
         }
+        const u = n.multiply(this.velocity.dot(n));
+        const w = this.velocity.substract(u);
+        const v = w.substract(u);
+        this.drawCalls.push({
+            func: (a, b) => {
+                ctx.strokeStyle = "blue";
+                ctx.beginPath();
+                ctx.moveTo(a[0].x, a[0].y);
+                ctx.lineTo(a[1].x, a[1].y);
+                ctx.stroke();
+                ctx.strokeStyle = 'green';
+                ctx.lineTo(a[1].add(v.setLength(500)).x, a[1].add(v.setLength(500)).y);
+                ctx.stroke();
+                ctx.closePath();
+            },
+            args: [minM, v]
+        });
         if (this.velocity.length() < min) {
             min = this.velocity.length();
             base = true;
         }
         // create a vector the dirrection of the original move factor but the length the smallest collide distance
         const moveFactorTemp = this.velocity.setLength(min);
-        // check if the move factor is too small, if it is just set it to 0 to avoid object passing through other after a certain time
-        const moveFactor = moveFactorTemp.length() > config.touchDistance ? moveFactorTemp : new Vector(0, 0);
+        // check if the object should just continue moving or rebond
+        const moveFactor = moveFactorTemp.length() > config.touchDistance ? this.velocity.setLength(min) : v.setLength(this.velocity.length());
         const l = minSeg[1].substract(minSeg[0]);
-        const bounceVector = 2 * (moveFactor.dot(l) / l.dot(l));
+        // set the final move factor and fix it to 10 decimals to avoid having a move factor of 3.00... ...001 wich break the collisions for some reason
+        moveFactor.x = Math.round(moveFactor.x * 100) / 100;
+        moveFactor.y = Math.round(moveFactor.y * 100) / 100;
+        moveFactor.setLength(parseFloat(moveFactor.length().toFixed(5)));
         this.drawCalls.push({
             func: () => ctx.fillStyle = 'black',
             args: []
@@ -128,12 +175,10 @@ class GameElement {
             func: ctx.fillText.bind(ctx),
             args: [moveFactor.length().toString(), 10, 50]
         });
-        // set the final move factor and fix it to 10 decimals to avoid having a move factor of 3.00... ...001 wich break the collisions for some reason
-        moveFactor.x = parseFloat(moveFactor.x.toFixed(10));
-        moveFactor.y = parseFloat(moveFactor.y.toFixed(10));
+        this.velocity = moveFactor;
         // apply the move factor
         for (let i = 0; i < this.hitbox.length; i++) {
-            this.hitbox[i] = this.hitbox[i].add(moveFactor);
+            this.hitbox[i] = this.hitbox[i].add(moveFactor.setLength(moveFactor.length() - config.touchDistance).clamp(3));
         }
     }
 }
@@ -151,7 +196,7 @@ class Game {
     constructor(elements = [], config) {
         const defaultConfig = {
             gravity: 1.5,
-            touchDistance: 0.01,
+            touchDistance: 0.1,
             showNormal: false,
             normalLength: 10
         };
