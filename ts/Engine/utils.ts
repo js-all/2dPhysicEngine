@@ -1,3 +1,5 @@
+type Segment = [Vector, Vector];
+
 /**
  * calculate the position of the intersection of a line and a segment
  * @param ox origin of the line x
@@ -50,4 +52,15 @@ function LineSegmentIntersection(ox: number, oy: number, vx: number, vy: number,
 
 function vectorLineIntersection(VecLocation: Vector, Vec: Vector, segStart: Vector, segEnd: Vector) {
     return LineSegmentIntersection(VecLocation.x, VecLocation.y, Vec.x, Vec.y, segStart.x, segStart.y, segEnd.x, segEnd.y)
+}
+
+function getNormalSeg(seg: Segment, length: number = 5) :Segment {
+    let v = getSingleVectorFromSeg(seg);
+    let middlePoint = seg[0].add(v.divide(2));
+    let n = v.normal().unit();
+
+    return [middlePoint, middlePoint.add(n.setLength(length))];
+}
+function getSingleVectorFromSeg(seg: Segment): Vector {
+    return seg[1].substract(seg[0]);
 }
