@@ -136,20 +136,36 @@ class GameElement {
                 const l = vectorLineIntersection(i, this.velocity, ...j.seg);
                 if (l.hit) {
                     // push the colliding distance in the lengths arrays
-                    let v = j.seg[1].substract(j.seg[0]);
                     lengths.push({
                         length: <number>l.distance,
-                        raySegment: {
-                            seg: j.seg,
-                            normal: j.normal,
-                            normalSeg: j.normalSeg
-                        },
+                        raySegment: j,
                         ///@ts-ignore
                         segmentHit: [i, l.position]
                     })
                 }
             }
         }
+        // check if any other point will collide with the object when it move. its used to detect the collision between a large moving element and a small obstacle
+        /**
+         * TODO fucing solve the probleme whereit check with evey points and not just them oving object
+         */
+
+        for (let i of points) {
+            for (let j of thisSegs) {
+                // cast a ray to know if the vector of the other element's point and its negatively moved version will collide with the moving element
+                const l = vectorLineIntersection(i, this.velocity.negative(), ...j.seg)
+                if (l.hit) {
+                    // push the colliding distance in the lengths arrays
+                    lengths.push({
+                        length: <number>l.distance,
+                        raySegment: j,
+                        //@ts-ignore
+                        segmentHit: [i, l.position]
+                    })
+                }
+            }
+        }
+
         /**
          * 
          *                THE GREAT DEBUGGING WALL
@@ -209,33 +225,6 @@ class GameElement {
                 segnumber++;
             }
         }
-        // check if any other point will collide with the object when it move. its used to detect the collision between a large moving element and a small obstacle
-        /**
-         * TODO fucing solve the probleme whereit check with evey points and not just them oving object
-         */
-
-        for (let i of points) {
-            for (let j of thisSegs) {
-                // cast a ray to know if the vector of the other element's point and its negatively moved version will collide with the moving element
-                const l = vectorLineIntersection(i, this.velocity.negative(), ...j.seg)
-                if (l.hit) {
-                    // push the colliding distance in the lengths arrays
-                    let v = j.seg[1].substract(j.seg[0]);
-                    let middlePoint = j.seg[0].add(v.divide(2));
-                    let n = v.normal().unit();
-                    lengths.push({
-                        length: <number>l.distance,
-                        raySegment: {
-                            seg: j.seg,
-                            normal: getSingleVectorFromSeg(j.seg).normal(),
-                            normalSeg: getNormalSeg(j.seg)
-                        },
-                        segmentHit: [i, i.add(this.velocity.setLength(<number>l.distance))]
-                    })
-                }
-            }
-        }
-
         let min = Infinity;
         let minSeg: ElSeg;
         let minM = [new Vector(0, 0), new Vector(0, 0)];

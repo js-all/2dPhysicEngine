@@ -3,18 +3,17 @@ const canvas = document.createElement('canvas');
 const ctx = canvas.getContext('2d');
 const cw = 1000;
 const ch = 1000;
-const game = new Game([], { showNormal: false, gravity: 0.5, touchDistance: 0.01, normalLength: 20 });
-const square = new Square(new Vector(240, 533), 400, 50, new Vector(-20.0, -4.15));
+const playRate = 60;
+const game = new Game([], { showNormal: false, gravity: 0.006 * playRate, touchDistance: 0.01, normalLength: 20 });
+const square = new Square(new Vector(800, 750), 100, 100, new Vector(-10, 30));
 const other = [
-    new Square(new Vector(100, 900), 800, 100, new Vector(0, 0), 1, 1, false),
-    new Square(new Vector(900, 0), 100, 1000, new Vector(0, 0), 0, 0, false),
-    new Square(new Vector(0, 0), 100, 1000, new Vector(0, 0), 0, 0, false)
+    new Square(new Vector(100, 750), 100, 100, new Vector(10, 30)),
+    new Square(new Vector(0, 900), 1000, 100, new Vector(0, 0), 1, 1, false)
 ];
 canvas.height = ch;
 canvas.width = cw;
 document.body.appendChild(canvas);
 game.elements.push(...[square, ...other]);
-game.elements[2].hitbox[3].x = 500;
 function draw() {
     ctx.clearRect(0, 0, cw, ch);
     game.draw(ctx);
@@ -23,9 +22,8 @@ function draw() {
 function play() {
     game.play();
 }
-play.rate = 60;
 draw();
-play.interval = setInterval(play, 1000 / play.rate);
+play.interval = setInterval(play, 1000 / playRate);
 const _$$c = canvas;
 const _$$cw = _$$c.width;
 const _$$ch = _$$c.height;
