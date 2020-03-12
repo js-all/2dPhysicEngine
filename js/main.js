@@ -3,8 +3,8 @@ const canvas = document.createElement('canvas');
 const ctx = canvas.getContext('2d');
 const cw = 1000;
 const ch = 1000;
-const game = new Game([], { showNormal: true, gravity: 0.05, touchDistance: 0.01 });
-const square = new Square(new Vector(240, 833), 400, 50, new Vector(-2.15, -4.15));
+const game = new Game([], { showNormal: false, gravity: 0.5, touchDistance: 0.01, normalLength: 20 });
+const square = new Square(new Vector(240, 533), 400, 50, new Vector(-20.0, -4.15));
 const other = [
     new Square(new Vector(100, 900), 800, 100, new Vector(0, 0), 1, 1, false),
     new Square(new Vector(900, 0), 100, 1000, new Vector(0, 0), 0, 0, false),
@@ -14,6 +14,7 @@ canvas.height = ch;
 canvas.width = cw;
 document.body.appendChild(canvas);
 game.elements.push(...[square, ...other]);
+game.elements[2].hitbox[3].x = 500;
 function draw() {
     ctx.clearRect(0, 0, cw, ch);
     game.draw(ctx);

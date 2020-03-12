@@ -13,15 +13,15 @@ type Segment = [Vector, Vector];
  */
 function LineSegmentIntersection(ox: number, oy: number, vx: number, vy: number, sx: number, sy: number, ex: number, ey: number): castInterface {
     //debugger;
-    const x1 = ox;
-    const y1 = oy;
-    const x2 = vx * 10000;
-    const y2 = vy * 10000;
+    const x3 = ox;
+    const y3 = oy;
+    const x4 = vx;
+    const y4 = vy;
 
-    const x3 = sx;
-    const y3 = sy;
-    const x4 = ex;
-    const y4 = ey;
+    const x1 = sx;
+    const y1 = sy;
+    const x2 = ex;
+    const y2 = ey;
 
     const den: number = (x1 - x2) * (y3 - y4) - (y1 - y2) * (x3 - x4);
     if (den == 0) return {
@@ -32,7 +32,7 @@ function LineSegmentIntersection(ox: number, oy: number, vx: number, vy: number,
 
     const t = ((x1 - x3) * (y3 - y4) - (y1 - y3) * (x3 - x4)) / den;
     const u = -(((x1 - x2) * (y1 - y3) - (y1 - y2) * (x1 - x3)) / den);
-    if (t >= 0 && t < 1 && u > 0) {
+    if (u >= 0 && t < 1 && t > 0) {
         let tptx = x1 + t * (x2 - x1);
         let tpty = y1 + t * (y2 - y1);
         let distance: number = Math.hypot(Math.abs(tptx - ox), Math.abs(tpty - oy))
@@ -51,10 +51,10 @@ function LineSegmentIntersection(ox: number, oy: number, vx: number, vy: number,
 }
 
 function vectorLineIntersection(VecLocation: Vector, Vec: Vector, segStart: Vector, segEnd: Vector) {
-    return LineSegmentIntersection(VecLocation.x, VecLocation.y, Vec.x, Vec.y, segStart.x, segStart.y, segEnd.x, segEnd.y)
+    return LineSegmentIntersection(VecLocation.x, VecLocation.y, VecLocation.add(Vec).x, VecLocation.add(Vec).y, segStart.x, segStart.y, segEnd.x, segEnd.y)
 }
 
-function getNormalSeg(seg: Segment, length: number = 5) :Segment {
+function getNormalSeg(seg: Segment, length: number = 5): Segment {
     let v = getSingleVectorFromSeg(seg);
     let middlePoint = seg[0].add(v.divide(2));
     let n = v.normal().unit();
