@@ -45,6 +45,7 @@ class Vector {
         )
     }
     setLength(length: number) {
+        if (this.equals(new Vector(0, 0))) return this;
         return Vector.fromAngle(this.toAngle(), length);
     }
     length() {

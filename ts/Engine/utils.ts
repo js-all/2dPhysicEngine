@@ -64,3 +64,11 @@ function getNormalSeg(seg: Segment, length: number = 5): Segment {
 function getSingleVectorFromSeg(seg: Segment): Vector {
     return seg[1].substract(seg[0]);
 }
+
+function VectorListToGeoJson(list: Vector[]) {
+    const res: [number, number][][] = [[]];
+    for (let i of list) {
+        res[0].push(i.toArray());
+    }
+    return res;
+}

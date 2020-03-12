@@ -1,3 +1,5 @@
+
+
 interface DrawCall {
     func: Function,
     args: any[];
@@ -40,8 +42,12 @@ class GameElement {
             ctx.stroke();
             ctx.closePath();
         }*/
+
+        ctx.fillStyle = 'black';
+        ctx.font = "20px Arial";
+        ctx.fillText(this.velocity.toArray().toString().substring(0, 10), ...new Vector(...polylabel(VectorListToGeoJson(this.hitbox), 1)).add(new Vector(- 45, 0)).toArray())
         for (let i of this.drawCalls) {
-            i.func(...i.args)
+            i.func(ctx, ...i.args)
         }
 
     }
@@ -54,12 +60,17 @@ class GameElement {
         interface ElSeg {
             seg: Segment,
             normal: Vector,
-            normalSeg: Segment
+            normalSeg: Segment,
+            origin: GameElement
+        }
+        interface Point {
+            point: Vector,
+            origin: GameElement
         }
         const lengths: Length[] = [];
         const segs: ElSeg[] = [];
         const thisSegs: ElSeg[] = [];
-        const points: Vector[] = [];
+        const points: Point[] = [];
         // used to see velocity length in debugger
         const tempthisvelocitylength = this.velocity.length();
         // reset draw calls
@@ -67,12 +78,14 @@ class GameElement {
         //store every segment and every points of every element in the game in segs and points respectively
         {
             let tmpSegs: Segment[] = [];
+            let tmpOrigins: GameElement[] = [];
             for (let i of collideElements) {
                 let k = 1;
                 for (let j of i.hitbox) {
                     const laterPoint = i.hitbox[k] || i.hitbox[0];
-                    points.push(j);
+                    points.push({ point: j, origin: i });
                     tmpSegs.push([j, laterPoint]);
+                    tmpOrigins.push(i);
                     k++;
                 }
             }
@@ -87,7 +100,8 @@ class GameElement {
                 segs.push({
                     seg: s,
                     normal: n[0],
-                    normalSeg: n[1]
+                    normalSeg: n[1],
+                    origin: tmpOrigins[i]
                 })
             }
         }
@@ -109,7 +123,8 @@ class GameElement {
                 thisSegs.push({
                     seg: s,
                     normal: n[0],
-                    normalSeg: n[1]
+                    normalSeg: n[1],
+                    origin: this
                 })
             }
         }
@@ -117,7 +132,7 @@ class GameElement {
         if (config.showNormal) {
             for (let i of [...segs, ...thisSegs]) {
                 this.drawCalls.push({
-                    func: (n: [Vector, Vector]) => {
+                    func: (ctx: CanvasRenderingContext2D, n: [Vector, Vector]) => {
                         ctx.beginPath();
                         ctx.moveTo(n[0].x, n[0].y);
                         ctx.lineTo(n[1].x, n[1].y);
@@ -146,21 +161,17 @@ class GameElement {
             }
         }
         // check if any other point will collide with the object when it move. its used to detect the collision between a large moving element and a small obstacle
-        /**
-         * TODO fucing solve the probleme whereit check with evey points and not just them oving object
-         */
-
         for (let i of points) {
             for (let j of thisSegs) {
                 // cast a ray to know if the vector of the other element's point and its negatively moved version will collide with the moving element
-                const l = vectorLineIntersection(i, this.velocity.negative(), ...j.seg)
+                const l = vectorLineIntersection(i.point, this.velocity.negative(), ...j.seg)
                 if (l.hit) {
                     // push the colliding distance in the lengths arrays
                     lengths.push({
                         length: <number>l.distance,
                         raySegment: j,
                         //@ts-ignore
-                        segmentHit: [i, l.position]
+                        segmentHit: [i.point, l.position]
                     })
                 }
             }
@@ -190,45 +201,48 @@ class GameElement {
             for (let i of lengths) {
                 const u = i.raySegment.normal.multiply(getSingleVectorFromSeg(i.segmentHit).dot(i.raySegment.normal) / i.raySegment.normal.dot(i.raySegment.normal));
                 const w = getSingleVectorFromSeg(i.segmentHit).substract(u);
-                const v = w.substract(u);
+                const v = w.multiply(i.raySegment.origin.friction).substract(u.multiply(i.raySegment.origin.bounciness));
+                const j = {
+                    segmentHit: i.segmentHit,
+                    raySegment: i.raySegment
+                }
                 this.drawCalls.push({
-                    func(i: Length, n: number, v: Vector) {
+                    func(ctx: CanvasRenderingContext2D, h: typeof j, n: number, v: Vector) {
+
                         ctx.fillStyle = "rgb(200, 100, 1)";
                         ctx.strokeStyle = ctx.fillStyle;
                         ctx.beginPath();
-                        ctx.moveTo(...i.segmentHit[0].toArray());
-                        ctx.lineTo(...i.segmentHit[1].toArray());
+                        ctx.moveTo(...h.segmentHit[0].toArray());
+                        ctx.lineTo(...h.segmentHit[1].toArray());
                         ctx.stroke();
                         ctx.closePath();
                         ctx.beginPath();
                         ctx.strokeStyle = "cyan";
-                        ctx.moveTo(...i.segmentHit[1].toArray());
-                        ctx.lineTo(...i.segmentHit[1].add(v.multiply(100)).toArray())
+                        ctx.moveTo(...h.segmentHit[1].toArray());
+                        ctx.lineTo(...h.segmentHit[1].add(v.multiply(100)).toArray())
                         ctx.stroke();
                         ctx.beginPath();
-                        ctx.arc(i.segmentHit[1].x, i.segmentHit[1].y, 10, 0, Math.PI * 2);
-                        ctx.fillText(n.toString(), ...i.segmentHit[0].substract(new Vector(0, 30 * n)).toArray());
+                        ctx.arc(h.segmentHit[1].x, h.segmentHit[1].y, 10, 0, Math.PI * 2);
+                        ctx.fillText(n.toString(), ...h.segmentHit[0].substract(new Vector(0, 30 * n)).toArray());
                         ctx.fill();
                         ctx.closePath();
                         ctx.strokeStyle = "purple";
                         ctx.beginPath();
                         ctx.fillStyle = "red";
                         ctx.font = "30px Arial";
-                        ctx.moveTo(...i.raySegment.seg[0].toArray());
-                        ctx.lineTo(...i.raySegment.seg[1].toArray());
-                        ctx.fillText(n.toString(), ...i.raySegment.seg[0].add(getSingleVectorFromSeg(i.raySegment.seg).divide(20).multiply(n)).toArray());
+                        ctx.moveTo(...h.raySegment.seg[0].toArray());
+                        ctx.lineTo(...h.raySegment.seg[1].toArray());
+                        ctx.fillText(n.toString(), ...h.raySegment.seg[0].add(getSingleVectorFromSeg(h.raySegment.seg).divide(20).multiply(n)).toArray());
                         ctx.stroke();
                         ctx.closePath();
                     },
-                    args: [i, segnumber, v]
+                    args: [j, segnumber, v]
                 })
                 segnumber++;
             }
         }
         let min = Infinity;
         let minSeg: ElSeg;
-        let minM = [new Vector(0, 0), new Vector(0, 0)];
-        let base = false;
         let moveFactor = this.velocity;
         // find the smaller collisions distance the know by how much the moving element can move
         for (let i of lengths) {
@@ -236,7 +250,6 @@ class GameElement {
             if (i.length < min) {
                 min = i.length;
                 minSeg = i.raySegment;
-                minM = i.segmentHit;
             }
         }
         if (min < this.velocity.length()) {
@@ -244,23 +257,31 @@ class GameElement {
             ///@ts-ignore
             const u = (<ElSeg>minSeg).normal.multiply(this.velocity.dot(minSeg.normal) / minSeg.normal.dot(minSeg.normal));
             const w = this.velocity.substract(u);
-            const v = w.substract(u);
-
-            moveFactor = v.setLength(this.velocity.length() * 0.5);
+            ///@ts-ignore
+            const v = w.multiply(minSeg.origin.friction).substract(u.multiply(minSeg.origin.bounciness));
+            v.x = Math.abs(v.x) < config.touchDistance ? 0 : v.x;
+            v.y = Math.abs(v.y) < config.touchDistance ? 0 : v.y;
+            moveFactor = this.velocity.setLength(min);
+            for (let i = 0; i < this.hitbox.length; i++) {
+                const mFactor = moveFactor.setLength(moveFactor.length() - config.touchDistance).clamp(3);
+                this.hitbox[i] = this.hitbox[i].add(mFactor);
+            }
+            moveFactor = v;
         } else {
             min = this.velocity.length();
-            base = true;
+
         }
         // set the final move factor and fix it to 10 decimals to avoid having a move factor of 3.00... ...001 wich break the collisions for some reason
         moveFactor.x = Math.round(moveFactor.x * 100) / 100
         moveFactor.y = Math.round(moveFactor.y * 100) / 100
+
         moveFactor.setLength(parseFloat(moveFactor.length().toFixed(5)))
 
         this.velocity = moveFactor;
         // apply the move factor
         for (let i = 0; i < this.hitbox.length; i++) {
-
-            this.hitbox[i] = this.hitbox[i].add(moveFactor.setLength(moveFactor.length() - config.touchDistance).clamp(3));
+            const mFactor = moveFactor.setLength(moveFactor.length() - config.touchDistance).clamp(3);
+            this.hitbox[i] = this.hitbox[i].add(mFactor);
         }
 
     }

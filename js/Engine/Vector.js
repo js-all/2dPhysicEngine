@@ -39,6 +39,8 @@ class Vector {
         return new Vector(f(this.x), f(this.y));
     }
     setLength(length) {
+        if (this.equals(new Vector(0, 0)))
+            return this;
         return Vector.fromAngle(this.toAngle(), length);
     }
     length() {
