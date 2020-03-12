@@ -34,18 +34,19 @@ class GameElement {
         ctx.lineTo(...this.hitbox[0].toArray());
         ctx.stroke();
         ctx.closePath();
-        /*
+        /* debugging code show an object dirrection and write itd velocity inside
         for (let i of this.hitbox) {
             ctx.beginPath();
             ctx.moveTo(...i.toArray());
             ctx.lineTo(...i.add(this.velocity.multiply(20)).toArray())
             ctx.stroke();
             ctx.closePath();
-        }*/
+        }
 
         ctx.fillStyle = 'black';
         ctx.font = "20px Arial";
         ctx.fillText(this.velocity.toArray().toString().substring(0, 10), ...new Vector(...polylabel(VectorListToGeoJson(this.hitbox), 1)).add(new Vector(- 45, 0)).toArray())
+        */
         for (let i of this.drawCalls) {
             i.func(ctx, ...i.args)
         }
