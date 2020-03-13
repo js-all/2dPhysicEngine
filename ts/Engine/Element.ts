@@ -15,7 +15,8 @@ class GameElement {
     bounciness: number;
     actif: boolean;
     drawCalls: DrawCall[];
-    constructor(hitbox: Vector[], position: Vector, velocity: Vector = new Vector(0, 0), friction: number = 1, bounciness: number = 1, actif: boolean = true) {
+    mass: number;
+    constructor(hitbox: Vector[], position: Vector, velocity: Vector = new Vector(0, 0), mass: number, friction: number = 1, bounciness: number = 1, actif: boolean = true) {
         this.hitbox = hitbox;
         this.position = position;
         this.velocity = velocity;
@@ -23,6 +24,7 @@ class GameElement {
         this.bounciness = bounciness;
         this.actif = actif;
         this.drawCalls = [];
+        this.mass = mass;
     }
     draw(ctx: CanvasRenderingContext2D, config: SureGameConfig) {
         ctx.strokeStyle = "black";
@@ -34,11 +36,11 @@ class GameElement {
         ctx.lineTo(...this.hitbox[0].toArray());
         ctx.stroke();
         ctx.closePath();
-        /* debugging code show an object dirrection and write itd velocity inside
+        /*// debugging code show an object dirrection and write itd velocity inside
         for (let i of this.hitbox) {
             ctx.beginPath();
             ctx.moveTo(...i.toArray());
-            ctx.lineTo(...i.add(this.velocity.multiply(20)).toArray())
+            ctx.lineTo(...i.add(this.velocity.multiply(5)).toArray())
             ctx.stroke();
             ctx.closePath();
         }
@@ -200,9 +202,11 @@ class GameElement {
         if (false) {
             let segnumber = 0;
             for (let i of lengths) {
+                const f = Math.min(i.raySegment.origin.friction, this.friction);
+                const b = Math.min(i.raySegment.origin.bounciness, this.bounciness);
                 const u = i.raySegment.normal.multiply(getSingleVectorFromSeg(i.segmentHit).dot(i.raySegment.normal) / i.raySegment.normal.dot(i.raySegment.normal));
                 const w = getSingleVectorFromSeg(i.segmentHit).substract(u);
-                const v = w.multiply(i.raySegment.origin.friction).substract(u.multiply(i.raySegment.origin.bounciness));
+                const v = w.multiply(f).substract(u.multiply(b));
                 const j = {
                     segmentHit: i.segmentHit,
                     raySegment: i.raySegment
@@ -224,7 +228,7 @@ class GameElement {
                         ctx.stroke();
                         ctx.beginPath();
                         ctx.arc(h.segmentHit[1].x, h.segmentHit[1].y, 10, 0, Math.PI * 2);
-                        ctx.fillText(n.toString(), ...h.segmentHit[0].substract(new Vector(0, 30 * n)).toArray());
+                        //ctx.fillText(n.toString(), ...h.segmentHit[0].substract(new Vector(0, 30 * n)).toArray());
                         ctx.fill();
                         ctx.closePath();
                         ctx.strokeStyle = "purple";
@@ -233,7 +237,7 @@ class GameElement {
                         ctx.font = "30px Arial";
                         ctx.moveTo(...h.raySegment.seg[0].toArray());
                         ctx.lineTo(...h.raySegment.seg[1].toArray());
-                        ctx.fillText(n.toString(), ...h.raySegment.seg[0].add(getSingleVectorFromSeg(h.raySegment.seg).divide(20).multiply(n)).toArray());
+                        //ctx.fillText(n.toString(), ...h.raySegment.seg[0].add(getSingleVectorFromSeg(h.raySegment.seg).divide(20).multiply(n)).toArray());
                         ctx.stroke();
                         ctx.closePath();
                     },
@@ -243,7 +247,13 @@ class GameElement {
             }
         }
         let min = Infinity;
-        let minSeg: ElSeg;
+        let minSeg: ElSeg = {
+            seg: [new Vector(0, 0), new Vector(0, 0)],
+            normal: new Vector(0, 0),
+            normalSeg: getNormalSeg([new Vector(0, 0), new Vector(0, 0)], 10),
+            origin: this
+        };
+        let base = true;
         let moveFactor = this.velocity;
         // find the smaller collisions distance the know by how much the moving element can move
         for (let i of lengths) {
@@ -254,14 +264,23 @@ class GameElement {
             }
         }
         if (min < this.velocity.length()) {
+            base = false;
             // if min < velocity, minSeg is an elSeg
-            ///@ts-ignore
+            const f = Math.min(minSeg.origin.friction, this.friction);
+            const b = Math.min(minSeg.origin.bounciness, this.bounciness);
             const u = (<ElSeg>minSeg).normal.multiply(this.velocity.dot(minSeg.normal) / minSeg.normal.dot(minSeg.normal));
             const w = this.velocity.substract(u);
-            ///@ts-ignore
-            const v = w.multiply(minSeg.origin.friction).substract(u.multiply(minSeg.origin.bounciness));
+            let v = w.multiply(f).substract(u.multiply(b));
             v.x = Math.abs(v.x) < config.touchDistance ? 0 : v.x;
             v.y = Math.abs(v.y) < config.touchDistance ? 0 : v.y;
+            const oMass = minSeg.origin.mass;
+            const massSum = this.mass + oMass;
+            let ratio = true ? this.mass / massSum : 0;
+            v = v.substract(v.multiply(ratio));
+            ratio = oMass / massSum;
+            minSeg.origin.velocity = minSeg.origin.velocity.add(v.multiply(ratio))
+
+
             moveFactor = this.velocity.setLength(min);
             for (let i = 0; i < this.hitbox.length; i++) {
                 const mFactor = moveFactor.setLength(moveFactor.length() - config.touchDistance).clamp(3);
@@ -280,24 +299,18 @@ class GameElement {
 
         this.velocity = moveFactor;
         // apply the move factor
-        for (let i = 0; i < this.hitbox.length; i++) {
-            const mFactor = moveFactor.setLength(moveFactor.length() - config.touchDistance).clamp(3);
-            this.hitbox[i] = this.hitbox[i].add(mFactor);
+        if (base) {
+            for (let i = 0; i < this.hitbox.length; i++) {
+                const mFactor = moveFactor.setLength(moveFactor.length() - config.touchDistance).clamp(3);
+                this.hitbox[i] = this.hitbox[i].add(mFactor);
+            }
+        } else {
+            this.move(collideElements, config);
         }
 
     }
 }
 
-class Square extends GameElement {
-    constructor(position: Vector, width: number, height: number, velocity: Vector = new Vector(0, 0), friction: number = 1, bounciness: number = 1, actif: boolean = true) {
-        super([
-            position.add(new Vector(0, 0)),
-            position.add(new Vector(width, 0)),
-            position.add(new Vector(width, height)),
-            position.add(new Vector(0, height))
-        ], position, velocity, friction, bounciness, actif);
-    }
-}
 interface GameConfig {
     gravity?: number,
     touchDistance?: number,
@@ -333,7 +346,7 @@ class Game {
         this.config = <SureGameConfig>config;
     }
     draw(ctx: CanvasRenderingContext2D) {
-        const scale = 0.75;
+        const scale = 1;
         ctx.save();
         ctx.translate(ctx.canvas.width * ((1 - scale) / 2), ctx.canvas.height * ((1 - scale) / 2))
         ctx.scale(scale, scale);
@@ -351,5 +364,29 @@ class Game {
                 i.velocity = i.velocity.add(new Vector(0, this.config.gravity));
             }
         }
+    }
+}
+class Square extends GameElement {
+    constructor(position: Vector, width: number, height: number, velocity: Vector = new Vector(0, 0), mass: number, friction: number = 1, bounciness: number = 1, actif: boolean = true) {
+        super([
+            position.add(new Vector(0, 0)),
+            position.add(new Vector(width, 0)),
+            position.add(new Vector(width, height)),
+            position.add(new Vector(0, height))
+        ], position, velocity, mass, friction, bounciness, actif);
+    }
+}
+
+class RegularPolygon extends GameElement {
+    constructor(center: Vector, r: number, numberOfEdges: number, velocity: Vector = new Vector(0, 0), mass: number, friction: number = 1, bounciness: number = 1, actif: boolean = true) {
+        let startingPoint = center.add(new Vector(0, -r));
+        const hitbox: Vector[] = []
+        const p = 2 * Math.PI * r;
+        for (let i = 0; i < numberOfEdges; i++) {
+            hitbox.push(startingPoint);
+            startingPoint = startingPoint.add(Vector.fromAngle(Math.PI * 2 / numberOfEdges * (i + 1), p / numberOfEdges));
+        }
+
+        super(hitbox, center, velocity, mass, friction, bounciness, actif);
     }
 }

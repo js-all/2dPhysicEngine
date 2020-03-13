@@ -91,4 +91,21 @@ class Vector {
         const l = length === null ? Math.random() * Number.MAX_VALUE / 100000 : length;
         if (length === null) return Vector.fromAngle(Math.random() * (Math.PI * 2), l);
     }
+    static fromObject(obj: { x: number, y: number }) {
+        return new Vector(obj.x, obj.y);
+    }
+    static cross(a: number, b: Vector): Vector;
+    static cross(a: Vector, b: Vector): number;
+    static cross(a: Vector, b: number): number;
+    static cross(a: Vector | number, b: Vector | number): Vector | number {
+        if (typeof a === "number" && b instanceof Vector) {
+            return new Vector(-a * b.y, a * b.x);
+        } else if (a instanceof Vector && typeof b === "number") {
+            return new Vector(b * a.y, b * a.x);
+        } else if (a instanceof Vector && b instanceof Vector) {
+            return a.x * b.y - a.y * b.x;
+        } else {
+            throw new TypeError('you can\'t use 2 numbers in this method');
+        }
+    }
 }

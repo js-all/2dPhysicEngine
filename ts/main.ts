@@ -1,22 +1,26 @@
 
 const canvas = <HTMLCanvasElement>document.createElement('canvas');
 const ctx = <CanvasRenderingContext2D>canvas.getContext('2d');
-const cw: number = 1000;
+const cw: number = 2000;
 const ch: number = 1000;
 const playRate = 60;
-const game = new Game([], { showNormal: false, gravity: 0.006 * playRate, touchDistance: 0.5, normalLength: 20 });
-const square = new Square(new Vector(800, 200), 100, 100, new Vector(-10, -10), 1, 0.2);
+const game: Game = new Game([], { showNormal: false, gravity: 0.006 * playRate, touchDistance: 0.05, normalLength: 20 });
 const other: GameElement[] = [
-    new Square(new Vector(100, 200), 100, 100, new Vector(10, -10), 1, 0.2),
-    new Square(new Vector(0, 600), 1000, 100, new Vector(0, -10), 0.5, 0.8),
-    new Square(new Vector(50, 800), 900, 50, new Vector(0, -5), 1, 1),
-    new Square(new Vector(0, 900), 1000, 100, new Vector(0, 0), -1, 0.7, false)
+    new Square(new Vector(800, 200), 100, 100, new Vector(-10, -10), 0.01, 0.9, 1),
+    new Square(new Vector(100, 200), 100, 100, new Vector(10, -10), 100000000, 0.9, 1),
+    new RegularPolygon(new Vector(500, 500), -50, 32, new Vector(10, 5), 1.1, 1, 0.1),
+
+    new Square(new Vector(10, 900), 1980, 100, new Vector(0, 0), 1000000000, 0.9, 0.5, false), // bottom
+    new Square(new Vector(0, 0), 10, 1000, new Vector(0, 0), 1, 0.1, 0.5, false),   // left
+    new Square(new Vector(1990, 0), 10, 1000, new Vector(0, 0), 1, 0.9, 1, false),  // right
+    new Square(new Vector(0, 0), 2000, 20, new Vector(0, 0), 1, 0.9, 0.5, false)    // top
 ];
+//other[3].hitbox[0].y = 800
 canvas.height = ch;
 canvas.width = cw;
 
 document.body.appendChild(canvas)
-game.elements.push(...[square, ...other]);
+game.elements.push(...other);
 
 function draw() {
     ctx.clearRect(0, 0, cw, ch);
@@ -52,4 +56,9 @@ function _$$adaptSize() {
 _$$adaptSize();
 
 window.addEventListener('resize', _$$adaptSize);
+document.addEventListener('keydown', e => {
+    if (e.keyCode === 32) {
+        console.log(JSON.stringify(game));
+    }
+})
 
